@@ -46,6 +46,7 @@
 import numpy as np
 from scipy.signal import butter, filtfilt
 import matplotlib.pyplot as plt
+from matplotlib.pyplot import plot
 
 #%%
 def my_low_pass_filter(signal, filter_params):
@@ -139,63 +140,109 @@ def generate_noisy_signal(snr_db, fs, duration, freqs):
     return t, noisy_signal
 
 #%%
+def generate_wiener_process(duration, fs, std):    
+    t               = np.linspace(0, duration, int(fs*duration))
+    noise           = np.random.normal(0,std,int(fs*duration))
+
+    signal          = np.cumsum(noise)
+    
+    return t, signal
+
+
+#%%
+
+def plot_PSD(signal,fs,order):
+    
+    signal = signal/np.sqrt(np.mean(np.abs(signal)**2))
+    N       = signal.size
+    freq    = np.fft.fftfreq(N,1/fs)
+    sig_fft = np.fft.fft(signal/N)
+    
+    freq1   = np.log10(freq[freq>0])
+    indexes = freq>=0
+    
+    sig_fft = sig_fft[indexes]
+    sig_fft = sig_fft[sig_fft != 0]
+    sig_fft = sig_fft[1:]
+    
+    plt.figure()
+    f1  = 100
+    f2  = 10*f1
+    a   = -50
+    b   = 20*order
+    plt.semilogx(10*np.log10(np.abs(sig_fft)**2))
+    
+    plt.semilogx([f1,f1],[-150,-20],color = 'black')
+    plt.semilogx([f2,f2],[-150,-20],color = 'black')
+    plt.semilogx([f1/10,f2],[a,a],color = 'black')
+    plt.semilogx([f1/10,f2],[a-b,a-b],color = 'black')
+    
+    plt.xlabel('frequency [Hz]')
+    plt.ylabel('PSD [dB/Hz]')
+    plt.show()
+    
+#%%
 # Paramètres
-fs          = 5000          # sampling frequency (Hz)
-duration    = 0.4           # signal duration (s)
+fs          = 1e9          # sampling frequency (Hz)
+duration    = 1e-3           # signal duration (s)
+std         = 1e4
 freqs       = [5,10,70]     # sinus frequencies (Hz)
 snr_db      = 5             # signal to noise raio (dB)
-cutoff      = 10            # cutting frequency
+cutoff      = 1e5            # cutting frequency
 order       = 4             # Butterworth filter ordre
 window_size = fs/cutoff     # size of winwdow for moving average
 
 
 
 # Génération du signal bruité
-t, noisy_signal = generate_noisy_signal(snr_db, fs, duration, freqs)
+# t, noisy_signal = generate_noisy_signal(snr_db, fs, duration, freqs)
+t, noisy_signal = generate_wiener_process(duration, fs, std)
 
-# Paramètres des filtres
-rect_filter_params = {
-    'type'          : 'rectangular',
-    'cutoff'        : cutoff,
-    'fs'            : fs
-}
+plot_PSD(noisy_signal,fs,order = 1)
 
-butter_filter_params = {
-    'type'          : 'butterworth',
-    'order'         : order,
-    'cutoff'        : cutoff,
-    'fs'            : fs
-}
+# # Paramètres des filtres
+# rect_filter_params = {
+#     'type'          : 'rectangular',
+#     'cutoff'        : cutoff,
+#     'fs'            : fs
+# }
 
-ma_filter_params = {
-    'type'          : 'moving_average',
-    'window_size'   : window_size,
-    'average_type'  : 'uniform'
-}
+# butter_filter_params = {
+#     'type'          : 'butterworth',
+#     'order'         : order,
+#     'cutoff'        : cutoff,
+#     'fs'            : fs
+# }
 
-# Application des filtres
-filtered_signal_rect    = my_low_pass_filter(noisy_signal, rect_filter_params)
-filtered_signal_butter  = my_low_pass_filter(noisy_signal, butter_filter_params)
-filtered_signal_ma      = my_low_pass_filter(noisy_signal, ma_filter_params)
+# ma_filter_params = {
+#     'type'          : 'moving_average',
+#     'window_size'   : window_size,
+#     'average_type'  : 'uniform'
+# }
 
-# Affichage des résultats
-plt.figure(figsize=(14, 8))
+# # Application des filtres
+# filtered_signal_rect    = my_low_pass_filter(noisy_signal, rect_filter_params)
+# filtered_signal_butter  = my_low_pass_filter(noisy_signal, butter_filter_params)
+# filtered_signal_ma      = my_low_pass_filter(noisy_signal, ma_filter_params)
 
-plt.subplot(2, 2, 1)
-plt.plot(t, noisy_signal)
-plt.title('Noisy Signal')
+# # Affichage des résultats
+# plt.figure(figsize=(14, 8))
 
-plt.subplot(2, 2, 2)
-plt.plot(t, filtered_signal_rect)
-plt.title('Rectangular Filter')
+# plt.subplot(2, 2, 1)
+# plt.plot(t, noisy_signal)
+# plt.title('Noisy Signal')
 
-plt.subplot(2, 2, 3)
-plt.plot(t, filtered_signal_butter)
-plt.title('Butterworth Filter')
+# plt.subplot(2, 2, 2)
+# plt.plot(t, filtered_signal_rect)
+# plt.title('Rectangular Filter')
 
-plt.subplot(2, 2, 4)
-plt.plot(t, filtered_signal_ma)
-plt.title('Moving Average Filter')
+# plt.subplot(2, 2, 3)
+# plt.plot(t, filtered_signal_butter)
+# plt.title('Butterworth Filter')
 
-plt.tight_layout()
-plt.show()
+# plt.subplot(2, 2, 4)
+# plt.plot(t, filtered_signal_ma)
+# plt.title('Moving Average Filter')
+
+# plt.tight_layout()
+# plt.show()
